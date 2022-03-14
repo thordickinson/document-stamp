@@ -7,8 +7,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 public class DocumentProcessorApplication {
 
 	public static void main(String[] args) {
-		//SpringApplication.run(DocumentProcessorApplication.class, args);
-		System.out.println("Jello world");
+		SpringApplication.run(DocumentProcessorApplication.class, args);
 	}
 
 }
