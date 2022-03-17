@@ -32,12 +32,25 @@ public class HashProcessor {
         sign(sourcePath, targetPath, info, new SignOptions());
     }
 
+    private float[] rotate(float x, float y, float rotation) {
+        float radian = (rotation * (float) Math.PI) / 180;
+        float cos = (float) Math.cos(radian);
+        float sin = (float) Math.sin(radian);
+        float x1 = x * cos - y * sin;
+        float y1 = y * cos + x * sin;
+        return new float[] { x, y };
+    }
+
+    private float angle(float rotation) {
+        return 90f - rotation;
+    }
+
     public void sign(String sourcePath, String targetPath, SignInfo info, SignOptions options)
             throws IOException, DocumentException {
         BaseColor color = parseColor(options.getColor(), new GrayColor(0.3f));
         Font baseFont = new Font(Font.FontFamily.HELVETICA, 12, Font.BOLD, color);
 
-        Font safyCodeFont = new Font(baseFont.getBaseFont(), 11, Font.BOLD);
+        Font safyCodeFont = new Font(baseFont.getBaseFont(), 10, Font.BOLD);
 
         Font docNameFont = deriveFont(baseFont, 2);
         Font subjectFont = deriveFont(baseFont, -1);
@@ -69,12 +82,14 @@ public class HashProcessor {
             // set transparency
             PdfGState state = new PdfGState();
             state.setFillOpacity(options.getTransparency());
+
             over.setGState(state);
 
-            for (y = (instructionsFont.getSize() * 2); y < pagesize.getTop(); y += yOffset) {
-                for (x = y % 2 == 0 ? 0 : (xOffset / 2); x < pagesize.getWidth() + xOffset; x += xOffset) {
-                    ColumnText.showTextAligned(over, Element.ALIGN_LEFT, hashPhrase, x,
-                            y, options.getRotation());
+            for (y = 0; y < pagesize.getTop(); y += yOffset) {
+                for (x = 0; x < pagesize.getWidth() + xOffset; x += xOffset) {
+                    float[] coords = rotate(x, y, options.getRotation());
+                    ColumnText.showTextAligned(over, Element.ALIGN_LEFT, hashPhrase, coords[0],
+                            coords[1], angle(options.getRotation()));
                 }
             }
 
@@ -89,7 +104,7 @@ public class HashProcessor {
             y += subjectFont.getSize() * 1.5;
             ColumnText.showTextAligned(over, Element.ALIGN_CENTER,
                     new Phrase("Valida la autenticidad de documento en docusafy.com", instructionsFont), xCenter,
-                    instructionsFont.getSize(), 0);
+                    instructionsFont.getSize() * 0.25f, 0);
             
             over.restoreState();
         }
@@ -110,7 +125,7 @@ public class HashProcessor {
 
     public static void main(String... args) throws IOException, DocumentException{
         HashProcessor processor = new HashProcessor("749288de-ef62-4078-973c-55336f9890db");
-        processor.sign("data/cedula.pdf", "data/hash-signed.pdf", new SignInfo("Cedula de ciudadanía",
+        processor.sign("data/original.pdf", "data/hash-signed.pdf", new SignInfo("Cedula de ciudadanía",
                 "Para algo importante", LocalDate.now()));
     }
 
