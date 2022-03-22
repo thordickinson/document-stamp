@@ -14,7 +14,7 @@ public class SignOptions {
     }
 
     public SignOptions() {
-        this("#CCCCCC", VerticalPosition.BOTTOM, 0.4f, 45f);
+        this("#CCCCCC", VerticalPosition.BOTTOM, 0.25f, 45f);
     }
 
     public String getColor() {

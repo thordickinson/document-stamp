@@ -3,6 +3,12 @@ package com.thord.docusafy.processor;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.stream.Collectors;
 
 import com.itextpdf.text.BaseColor;
 import com.itextpdf.text.DocumentException;
@@ -10,6 +16,7 @@ import com.itextpdf.text.Element;
 import com.itextpdf.text.Font;
 import com.itextpdf.text.Phrase;
 import com.itextpdf.text.Rectangle;
+import com.itextpdf.text.pdf.BaseFont;
 import com.itextpdf.text.pdf.ColumnText;
 import com.itextpdf.text.pdf.GrayColor;
 import com.itextpdf.text.pdf.PdfContentByte;
@@ -82,10 +89,45 @@ public class HashProcessor {
             // set transparency
             PdfGState state = new PdfGState();
             state.setFillOpacity(options.getTransparency());
-
+            state.setStrokeOpacity(options.getTransparency());
             over.setGState(state);
 
-            for (y = 0; y < pagesize.getTop(); y += yOffset) {
+            xCenter = (pagesize.getLeft() + pagesize.getRight()) / 2;
+            x = xCenter;
+
+            y = instructionsFont.getSize() * 0.5f;
+            ColumnText.showTextAligned(over, Element.ALIGN_CENTER,
+                    new Phrase("Valida la autenticidad de documento en docusafy.com", instructionsFont), xCenter,
+                    y, 0);
+            y += instructionsFont.getSize();
+
+            float pageWidth = pagesize.getRight() - pagesize.getLeft();
+            List<String> lines = splitText(info.getSubject(), pageWidth * 0.6f, subjectFont);
+            Collections.reverse(lines);
+            for (String line : lines) {
+                y += subjectFont.getSize() * 0.3f;
+                ColumnText.showTextAligned(over, Element.ALIGN_CENTER, new Phrase(line, subjectFont), x, y, 0);
+                y += subjectFont.getSize();
+            }
+
+            y += docNameFont.getSize() * 0.3f;
+            ColumnText.showTextAligned(over, Element.ALIGN_CENTER, new Phrase(info.getDocumentName(), docNameFont), x,
+                    y, 0);
+            y += docNameFont.getSize() * 1.5f;
+
+            over.moveTo(pageWidth * 0.18f, 0);
+            over.lineTo(pageWidth * 0.18f, y);
+            over.stroke();
+
+            over.moveTo(pageWidth * 0.82f, 0);
+            over.lineTo(pageWidth * 0.82f, y);
+            over.stroke();
+
+            over.moveTo(pageWidth * 0.18f, y);
+            over.lineTo(pageWidth * 0.82f, y);
+            over.stroke();
+
+            for (; y < pagesize.getTop(); y += yOffset) {
                 for (x = 0; x < pagesize.getWidth() + xOffset; x += xOffset) {
                     float[] coords = rotate(x, y, options.getRotation());
                     ColumnText.showTextAligned(over, Element.ALIGN_LEFT, hashPhrase, coords[0],
@@ -93,25 +135,30 @@ public class HashProcessor {
                 }
             }
 
-            xCenter = (pagesize.getLeft() + pagesize.getRight()) / 2;
-            x = xCenter;
-            y = (pagesize.getTop() + pagesize.getBottom()) / 2;
-            ColumnText.showTextAligned(over, Element.ALIGN_CENTER, new Phrase(info.getDocumentName(), docNameFont), x,
-                    y, options.getRotation());
-            y += docNameFont.getSize() * 1.5;
-            ColumnText.showTextAligned(over, Element.ALIGN_CENTER, new Phrase(info.getSubject(), subjectFont), x,
-                    y, options.getRotation());
-            y += subjectFont.getSize() * 1.5;
-            ColumnText.showTextAligned(over, Element.ALIGN_CENTER,
-                    new Phrase("Valida la autenticidad de documento en docusafy.com", instructionsFont), xCenter,
-                    instructionsFont.getSize() * 0.25f, 0);
-            
             over.restoreState();
         }
         stamper.close();
         reader.close();
     }
 
+    private List<String> splitText(String text, float maxWidth, Font font) {
+        List<String> words = Arrays.asList(text.split(" "));
+        BaseFont baseFont = font.getCalculatedBaseFont(true);
+        List<String> line = new ArrayList<>();
+        List<List<String>> lines = new LinkedList<>();
+        lines.add(line);
+
+        for (String word : words) {
+            String nextLine = String.join(" ", line) + " " + word;
+            float width = baseFont.getWidthPoint(nextLine, font.getSize());
+            if (width > maxWidth) {
+                line = new ArrayList<>();
+                lines.add(line);
+            }
+            line.add(word);
+        }
+        return lines.stream().map(l -> String.join(" ", l)).collect(Collectors.toList());
+    }
 
     private String normalize(String text){
         //TODO should we remove accents?
@@ -126,7 +173,8 @@ public class HashProcessor {
     public static void main(String... args) throws IOException, DocumentException{
         HashProcessor processor = new HashProcessor("749288de-ef62-4078-973c-55336f9890db");
         processor.sign("data/original.pdf", "data/hash-signed.pdf", new SignInfo("Cedula de ciudadanía",
-                "Para algo importante", LocalDate.now()));
+                "Documento compartido con la finalidad de hacer algo muy bonito pero no se supone que debería ser compartido para otras cosas",
+                LocalDate.now()));
     }
 
 }
